@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>訓練與營養紀錄</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#f97316">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="訓練紀錄">
+<style>
+  :root{--bg:#ffffff;--card:#f8fafc;--line:#e2e8f0;--txt:#0f172a;--mute:#64748b;--acc:#4ade80;--bad:#dc2626}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+  header{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:14px 16px 6px;flex-wrap:wrap}
+  h1{font-size:19px;margin:0}
+  nav{display:flex;gap:6px;padding:0 16px 12px;overflow-x:auto}
+  body{background:var(--bg)}
+  header{background:linear-gradient(135deg,#f97316,#ec4899 50%,#8b5cf6);margin:12px 12px 10px;border-radius:18px;padding:16px 18px;box-shadow:0 10px 30px rgba(236,72,153,.25)}
+  h1{font-size:22px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.25)}
+  nav button{flex:1;min-width:64px;background:var(--card);color:var(--mute);border:1px solid var(--line);border-radius:14px;padding:9px 6px;font-size:14px;cursor:pointer;transition:transform .15s}
+  nav button:hover{transform:translateY(-2px)}
+  nav button.on{color:#0f1115;background:linear-gradient(135deg,#4ade80,#22d3ee);border-color:transparent;font-weight:700;box-shadow:0 6px 18px rgba(34,211,238,.35)}
+  .card{box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .15s}
+  .card:hover{transform:translateY(-1px)}
+  .card h2{color:#b45309;font-size:16px;letter-spacing:.5px}
+  .card{box-shadow:0 4px 14px rgba(15,23,42,.08)}
+  input,select,textarea{background:#ffffff}
+  .left{color:#16a34a}
+  .btn{color:#ffffff}
+  .chip{background:#ffffff}
+  .bar{background:#e2e8f0}
+  #train .card{background:#eef6ff}
+  #lib .card{background:#f3eefe}
+  #food .card{background:#fff4ec}
+  #weight .card{background:#ecfdf3}
+  #plan .card{background:#fdf2f8}
+  .card{border-color:transparent}
+  .stat span{color:#64748b}
+  .btn{background:linear-gradient(135deg,#4ade80,#22d3ee);box-shadow:0 4px 12px rgba(34,211,238,.3);transition:transform .1s}
+  .btn:hover{transform:scale(1.04)}
+  .btn.ghost{background:transparent;box-shadow:none}
+  .bar{height:12px;border-radius:99px}
+  .bar i{background:linear-gradient(90deg,#f472b6,#facc15,#4ade80);border-radius:99px}
+  .chip{font-size:13px;padding:4px 12px}
+  .stat b{font-size:22px}
+  main{padding:0 16px 40px}
+  section{display:none} section.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:15px;margin:0 0 10px;color:var(--mute);font-weight:600}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+  .row > div{flex:1;min-width:90px}
+  .stat b{display:block;font-size:20px}
+  .stat span{color:var(--mute);font-size:12px}
+  input,select,textarea{background:#0c0e12;color:var(--txt);border:2px solid var(--line);border-radius:8px;padding:9px;font-size:15px;width:100%}
+  input.sm{max-width:110px}
+  textarea{min-height:70px}
+  label{font-size:12px;display:block;margin-bottom:3px;color:var(--mute)}
+  .btn{background:var(--acc);color:var(--bg);border:0;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--mute);border:1px solid var(--line);font-weight:400}
+  .btn.del{background:transparent;color:var(--bad);border:0;padding:4px 6px;cursor:pointer}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--mute);font-weight:500;font-size:12px}
+  .bar{height:8px;background:#0c0e12;border-radius:6px;overflow:hidden;margin-top:6px}
+  .bar i{display:block;height:100%;background:var(--acc)}
+  .over{color:var(--bad)} .left{color:var(--acc)}
+  .hint{color:var(--mute);font-size:12px;margin-top:6px}
+  .chip{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;margin:2px;background:#0c0e12;border:1px solid var(--line)}
+  select.user{width:auto;min-width:120px;padding:7px}
+  /* 淺色系覆寫：進度條、標籤、數字顏色 */
+  .bar{background:#e2e8f0!important}
+  .bar i{background:linear-gradient(90deg,#f9a8d4,#fde68a,#86efac)!important}
+  .chip{background:#ffffff!important;color:#334155!important;border-color:#cbd5e1!important}
+  .left{color:#15803d!important}
+  .over{color:#dc2626!important}
+  .hint{color:#64748b!important}
+  /* 彩色欄位名稱加深、加粗，避免太淡 */
+  label[style*="color:hsl"]{filter:brightness(.72) saturate(1.4);font-weight:700!important;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>💪 訓練與營養紀錄 🥗</h1>
+  <div class="row" style="flex:0 0 auto;align-items:center">
+    <select id="userSel" class="user f0"></select>
+    <button class="btn ghost" id="newUser">＋ 新使用者</button>
+    <button class="btn ghost" id="exportBtn">📤 匯出</button>
+    <button class="btn ghost" id="importBtn">📥 匯入</button>
+    <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+  </div>
+</header>
+<nav>
+  <button data-tab="train" class="on">🏋️ 訓練</button>
+  <button data-tab="lib">📚 動作庫</button>
+  <button data-tab="food">🍱 飲食</button>
+  <button data-tab="weight">⚖️ 體重</button>
+  <button data-tab="plan">🎯 目標</button>
+</nav>
+<main>
+
+<!-- 訓練 -->
+<section id="train" class="on">
+  <div class="card">
+    <h2>🏋️ 今日訓練</h2>
+    <div class="row" style="margin-bottom:8px">
+      <div><label style="color:hsl(0,70%,60%)">日期</label><input class="f1" type="date" id="tDate"></div>
+      <div><label style="color:hsl(15,70%,60%)">訓練日</label>
+        <select class="f2" id="tDay">
+          <option value="A">A：手＋背</option>
+          <option value="B">B：胸＋三頭＋肩</option>
+          <option value="C">C：腿＋上腹</option>
+        </select>
+      </div>
+    </div>
+    <label style="color:hsl(30,70%,60%)">動作（機器）</label>
+    <select class="f3" id="tEx" style="margin-bottom:8px"></select>
+    <div class="row" style="margin-bottom:8px">
+      <div><label style="color:hsl(45,70%,60%)">重量 kg</label><input class="f4" type="number" step="0.5" id="tKg"></div>
+      <div><label style="color:hsl(60,70%,60%)">次數</label><input class="f5" type="number" id="tReps"></div>
+      <div><label style="color:hsl(75,70%,60%)" title="自覺費力度：10 = 全力做到極限；9 = 還能再做 1 下；8 = 還能再做 2 下；7 = 還能再做 3 下左右">RPE（費力度 1–10）ℹ️</label><input class="f6" type="number" step="0.5" min="1" max="10" id="tRpe" placeholder="例如 8"></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="addSet">＋ 記錄一組</button>
+      <button class="btn ghost" id="copyLast">帶入上次</button>
+    </div>
+    <div class="hint" id="lastHint"></div>
+    <div class="hint">💡 RPE：這組做完的吃力程度。10＝拼到極限，9＝還能再做 1 下，8＝還能再做 2 下，7＝還能再做 3 下左右。不確定就填 8。</div>
+  </div>
+
+  <div class="card">
+    <h2>📋 今日組數</h2>
+    <table><thead><tr><th>動作</th><th>kg</th><th>次</th><th>RPE</th><th></th></tr></thead><tbody id="setRows"></tbody></table>
+    <div class="hint" id="volHint"></div>
+  </div>
+
+  <div class="card">
+    <h2>📊 本週各肌群組數（目標約 10–20 組）</h2>
+    <div id="weekMuscle"></div>
+  </div>
+
+  <div class="card">
+    <h2>📝 訓練心得</h2>
+    <textarea class="f7" id="note" placeholder="今天的感受、哪一組卡住、哪裡不舒服…"></textarea>
+    <div class="row" style="margin-top:8px;justify-content:space-between;align-items:center">
+      <div id="flags"></div>
+      <button class="btn" id="saveNote">💾 儲存心得</button>
+    </div>
+    <div class="hint">📌 Pump：訓練後肌肉充血變飽滿的感覺（主觀感受）；疲勞：明顯累；關節不適：有痛感，請留意。</div>
+    <div class="hint" id="noteHint"></div>
+  </div>
+</section>
+
+<!-- 動作庫 -->
+<section id="lib">
+  <div class="card">
+    <h2>➕ 新增動作</h2>
+    <div class="row">
+      <div><label>訓練日</label>
+        <select class="f8" id="lDay"><option value="A">A：手＋背</option><option value="B">B：胸＋三頭＋肩</option><option value="C">C：腿＋上腹</option></select>
+      </div>
+      <div><label>動作名稱（機器）</label><input class="f9" id="lName" placeholder="例如：胸推機"></div>
+      <div><label>主要肌群</label>
+        <select class="f10" id="lMuscle"></select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="addLib">新增</button></div>
+  </div>
+  <div class="card">
+    <h2>🗂️ 目前動作</h2>
+    <table><thead><tr><th>訓練日</th><th>動作</th><th>肌群</th><th></th></tr></thead><tbody id="libRows"></tbody></table>
+    <div class="hint">每位使用者的動作庫各自獨立，可以自由增刪。</div>
+  </div>
+</section>
+
+<!-- 飲食 -->
+<section id="food">
+  <div class="card">
+    <h2>🎯 今日剩餘</h2>
+    <div class="grid" id="remain"></div>
+  </div>
+  <div class="card">
+    <h2>🍳 新增食物</h2>
+    <label>名稱</label>
+    <input class="f11" id="fName" placeholder="例如：雞胸肉 150g" style="margin-bottom:8px">
+    <div class="grid">
+      <div><label>熱量 kcal</label><input class="f12" type="number" id="fKcal"></div>
+      <div><label>蛋白質 g</label><input class="f13" type="number" id="fP"></div>
+      <div><label>脂肪 g</label><input class="f14" type="number" id="fF"></div>
+      <div><label>碳水 g</label><input class="f15" type="number" id="fC"></div>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="addFood">新增</button></div>
+  </div>
+  <div class="card">
+    <h2>🧾 今日紀錄</h2>
+    <table><thead><tr><th>食物</th><th>kcal</th><th>P</th><th>F</th><th>C</th><th></th></tr></thead><tbody id="foodRows"></tbody></table>
+    <div class="hint">食物數據請以食品標示或台灣食品營養成分資料庫為準。</div>
+  </div>
+</section>
+
+<!-- 體重 -->
+<section id="weight">
+  <div class="card">
+    <h2>⚖️ 今日體重</h2>
+    <div class="row">
+      <div style="flex:0 0 140px"><label>體重 kg</label><input class="f16 sm" type="number" step="0.05" id="wKg"></div>
+      <button class="btn" id="addW">記錄</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>📈 趨勢</h2>
+    <div class="grid" id="wStats"></div>
+    <div class="hint">7 日平均可減少單日水分造成的波動。</div>
+  </div>
+  <div class="card">
+    <h2>🗓️ 紀錄</h2>
+    <table><thead><tr><th>日期</th><th>體重</th><th>7日均</th><th></th></tr></thead><tbody id="wRows"></tbody></table>
+  </div>
+</section>
+
+<!-- 目標 -->
+<section id="plan">
+  <div class="card">
+    <h2>🧬 身體數據與目標</h2>
+    <div class="grid">
+      <div><label style="color:hsl(180,70%,60%)">體重 kg</label><input class="f17" type="number" step="0.05" id="pW"></div>
+      <div><label style="color:hsl(195,70%,60%)">身高 cm</label><input class="f18" type="number" id="pH"></div>
+      <div><label style="color:hsl(210,70%,60%)">年齡</label><input class="f19" type="number" id="pA"></div>
+      <div><label style="color:hsl(225,70%,60%)">體脂 %</label><input class="f20" type="number" step="0.1" id="pBF"></div>
+      <div><label style="color:hsl(240,70%,60%)">目標體重 kg</label><input class="f21" type="number" step="0.1" id="pG"></div>
+      <div><label style="color:hsl(255,70%,60%)">目標</label>
+        <select class="f22" id="pMode"><option value="cut">減脂（赤字 500）</option><option value="bulk">增肌（盈餘 300）</option></select>
+      </div>
+      <div style="grid-column:span 2"><label style="color:hsl(270,70%,60%)">活動係數</label>
+        <select class="f23" id="pAct">
+          <option value="1.375">輕度活動</option>
+          <option value="1.55">中度（3–5 次/週）</option>
+          <option value="1.725">高度</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>🔥 計算結果</h2>
+    <div class="grid" id="calc"></div>
+    <div class="hint" id="calcNote"></div>
+  </div>
+  <div class="card">
+    <h2>🥩 三大營養素（每日）</h2>
+    <table><thead><tr><th>營養素</th><th>克數</th><th>熱量</th></tr></thead><tbody id="macroRows"></tbody></table>
+    <div class="hint">蛋白質 2.0 g/kg，脂肪約 0.9 g/kg，碳水填滿剩餘熱量。</div>
+  </div>
+</section>
+</main>
+
+<script>
+// ===== 顏色：每個輸入格一種顏色 =====
+let css = '';
+for (let i = 0; i < 24; i++){
+  const c = `hsl(${Math.round(i*360/24)},75%,62%)`;
+  css += `.f${i}{border-color:${c}!important;background:hsl(${Math.round(i*360/24)},80%,96%)!important}`;
+}
+document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`);
+
+// ===== 工具 =====
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const MUSCLES = ['背','手','胸','肩','三頭','腿','上腹'];
+const MUSCLE_LABEL = {'手':'手（二頭）'};
+const DEFAULT_LIB = [
+  {d:'A',n:'高位下拉機',m:'背'},{d:'A',n:'坐姿划船機',m:'背'},{d:'A',n:'T槓划船機',m:'背'},{d:'A',n:'直臂下拉機',m:'背'},
+  {d:'A',n:'二頭彎舉機',m:'手'},{d:'A',n:'牧師椅二頭彎舉機',m:'手'},{d:'A',n:'繩索二頭彎舉',m:'手'},
+  {d:'B',n:'胸推機',m:'胸'},{d:'B',n:'蝴蝶機夾胸',m:'胸'},{d:'B',n:'上斜胸推機',m:'胸'},
+  {d:'B',n:'肩推機',m:'肩'},{d:'B',n:'側平舉機',m:'肩'},{d:'B',n:'反向飛鳥機',m:'肩'},
+  {d:'B',n:'三頭下壓機',m:'三頭'},{d:'B',n:'三頭伸展機',m:'三頭'},
+  {d:'C',n:'腿推機',m:'腿'},{d:'C',n:'腿伸機',m:'腿'},{d:'C',n:'腿彎舉機',m:'腿'},{d:'C',n:'臀推機',m:'腿'},
+  {d:'C',n:'內收機',m:'腿'},{d:'C',n:'外展機',m:'腿'},{d:'C',n:'卷腹機',m:'上腹'},{d:'C',n:'繩索捲腹',m:'上腹'}
+];
+const DEFAULT_PROFILE = {w:114.75,h:179,a:21,bf:34.5,g:85,mode:'cut',act:'1.55'};
+
+// ===== 多使用者資料 =====
+let S = JSON.parse(localStorage.getItem('fit_v2') || 'null');
+if (!S){
+  S = {cur:'u1', users:{u1:{name:'使用者 1', p:{...DEFAULT_PROFILE}, lib:structuredClone(DEFAULT_LIB), logs:[], notes:{}, foods:[], weights:[]}}};
+// 這些數字是預設範例，請改成自己的數據
+}
+const U = () => S.users[S.cur];
+const persist = () => localStorage.setItem('fit_v2', JSON.stringify(S));
+
+function renderUsers(){
+  $('#userSel').innerHTML = Object.entries(S.users).map(([id,u]) => `<option value="${id}" ${id===S.cur?'selected':''}>${esc(u.name)}</option>`).join('');
+}
+$('#userSel').onchange = e => { S.cur = e.target.value; persist(); renderAll(); };
+$('#newUser').onclick = () => {
+  const name = prompt('新使用者名稱');
+  if (!name) return;
+  const id = 'u' + Date.now();
+  S.users[id] = {name, p:{w:70, h:170, a:25, bf:0, g:'', mode:'cut', act:'1.55'}, lib:structuredClone(DEFAULT_LIB), logs:[], notes:{}, foods:[], weights:[]};
+  S.cur = id; persist(); renderAll();
+};
+
+// ===== 分頁 =====
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === b.dataset.tab));
+});
+
+// ===== 動作庫 / 訓練 =====
+function exOptions(){
+  const d = $('#tDay').value;
+  return U().lib.filter(x => x.d === d);
+}
+function fillEx(){
+  $('#tEx').innerHTML = exOptions().map(x => `<option value="${esc(x.n)}">${esc(x.n)}</option>`).join('') || '<option value="">（此訓練日尚無動作）</option>';
+  lastHint();
+}
+$('#tDay').onchange = fillEx;
+$('#tDate').value = today();
+$('#tDate').onchange = () => { lastHint(); renderTrain(); };
+$('#tEx').onchange = lastHint;
+
+function lastSet(ex){
+  const h = U().logs.filter(l => l.ex === ex && l.date < $('#tDate').value).sort((a,b)=> b.date.localeCompare(a.date));
+  return h[0];
+}
+function lastHint(){
+  const l = lastSet($('#tEx').value);
+  $('#lastHint').textContent = l ? `上次：${l.date}　${l.kg} kg × ${l.reps}（RPE ${l.rpe ?? '-'}）` : '這個動作還沒有過去紀錄';
+}
+$('#copyLast').onclick = () => {
+  const l = lastSet($('#tEx').value);
+  if (l){ $('#tKg').value = l.kg; $('#tReps').value = l.reps; $('#tRpe').value = l.rpe ?? ''; }
+};
+$('#addSet').onclick = () => {
+  const ex = $('#tEx').value;
+  const item = U().lib.find(x => x.n === ex);
+  const kg = parseFloat($('#tKg').value), reps = parseInt($('#tReps').value), rpe = parseFloat($('#tRpe').value) || null;
+  if (!item) return alert('請先到「動作庫」新增動作');
+  if (!kg || !reps) return alert('請輸入重量與次數');
+  U().logs.push({id: Date.now(), date: $('#tDate').value, day: item.d, ex, m: item.m, kg, reps, rpe});
+  persist();
+  $('#tReps').value = ''; $('#tRpe').value = '';
+  renderTrain(); lastHint();
+};
+window.delSet = id => { U().logs = U().logs.filter(l => l.id !== id); persist(); renderTrain(); lastHint(); };
+
+function renderTrain(){
+  const d = $('#tDate').value;
+  const todays = U().logs.filter(l => l.date === d);
+  $('#setRows').innerHTML = todays.map(l => `<tr>
+    <td>${esc(l.ex)}</td><td>${l.kg}</td><td>${l.reps}</td><td>${l.rpe ?? '-'}</td>
+    <td><button class="btn del" onclick="delSet(${l.id})">✕</button></td></tr>`).join('') || '<tr><td colspan=5 class="hint">今天還沒有紀錄</td></tr>';
+  const vol = todays.reduce((s,l)=> s + l.kg*l.reps, 0);
+  $('#volHint').textContent = `今日總組數 ${todays.length}　總噸數 ${Math.round(vol).toLocaleString()} kg`;
+
+  // 本週（週一起算）各肌群組數
+  const t = new Date(d); const dow = (t.getDay()+6)%7;
+  const mon = new Date(t); mon.setDate(t.getDate()-dow);
+  const wk = [...Array(7)].map((_,i)=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return new Date(x.getTime()-x.getTimezoneOffset()*60000).toISOString().slice(0,10); });
+  const cnt = Object.fromEntries(MUSCLES.map(m=>[m,0]));
+  U().logs.filter(l => wk.includes(l.date)).forEach(l => { if (l.m in cnt) cnt[l.m]++; });
+  $('#weekMuscle').innerHTML = MUSCLES.map(m => {
+    const pct = Math.min(100, cnt[m]/20*100), cls = cnt[m] < 10 ? 'left' : (cnt[m] > 20 ? 'over' : '');
+    return `<div style="margin-bottom:8px"><span class="${cls}">${MUSCLE_LABEL[m]||m}　${cnt[m]} 組</span><div class="bar"><i style="width:${pct}%"></i></div></div>`;
+  }).join('');
+
+  const n = U().notes[d] || {text:'', flags:[]};
+  $('#note').value = n.text;
+  $('#flags').innerHTML = ['Pump','疲勞','關節不適'].map((f,i)=>
+    `<label class="chip" title="${['Pump：訓練後肌肉充血、變飽滿緊繃的感覺','疲勞：整體或該肌群明顯累','關節不適：關節或肌腱有痛感，要注意'][i]}" style="cursor:pointer;color:var(--txt)"><input type="checkbox" class="fl" value="${f}" ${n.flags.includes(f)?'checked':''} style="width:auto;margin-right:4px">${f}</label>`).join('');
+  $('#noteHint').textContent = n.text ? '已儲存' : '';
+}
+$('#saveNote').onclick = () => {
+  const d = $('#tDate').value;
+  U().notes[d] = {text: $('#note').value, flags: [...document.querySelectorAll('.fl:checked')].map(c=>c.value)};
+  persist(); $('#noteHint').textContent = '已儲存 ✓';
+};
+
+// 動作庫管理
+function renderLib(){
+  $('#lMuscle').innerHTML = MUSCLES.map(m => `<option>${m}</option>`).join('');
+  $('#libRows').innerHTML = U().lib.map((x,i) => `<tr><td>${x.d}</td><td>${esc(x.n)}</td><td>${MUSCLE_LABEL[x.m]||x.m}</td>
+    <td><button class="btn del" onclick="delLib(${i})">✕</button></td></tr>`).join('');
+}
+$('#addLib').onclick = () => {
+  const n = $('#lName').value.trim(); if (!n) return;
+  U().lib.push({d:$('#lDay').value, n, m:$('#lMuscle').value});
+  persist(); $('#lName').value = ''; renderLib(); fillEx();
+};
+window.delLib = i => { U().lib.splice(i,1); persist(); renderLib(); fillEx(); };
+
+// ===== 飲食 =====
+function renderFood(){
+  const d = today();
+  const todays = U().foods.filter(f => f.date === d);
+  const sum = k => todays.reduce((s,f)=>s+(+f[k]||0),0);
+  const t = calc();
+  const rem = [['熱量', t.target - sum('kcal'), 'kcal'], ['蛋白質', t.p - sum('p'), 'g'], ['脂肪', t.f - sum('f'), 'g'], ['碳水', t.c - sum('c'), 'g']];
+  $('#remain').innerHTML = rem.map(([n,v,u]) => `<div class="stat"><span>${n}還差</span><b class="${v<0?'over':'left'}">${Math.round(v)} ${u}</b></div>`).join('');
+  $('#foodRows').innerHTML = todays.map(f => `<tr><td>${esc(f.name)}</td><td>${f.kcal}</td><td>${f.p}</td><td>${f.f}</td><td>${f.c}</td>
+    <td><button class="btn del" onclick="delFood(${f.id})">✕</button></td></tr>`).join('') || '<tr><td colspan=6 class="hint">今天還沒有紀錄</td></tr>';
+}
+$('#addFood').onclick = () => {
+  const v = id => parseFloat($(id).value) || 0;
+  if (!$('#fKcal').value) return alert('請輸入熱量');
+  U().foods.push({id: Date.now(), date: today(), name: $('#fName').value || '未命名', kcal: v('#fKcal'), p: v('#fP'), f: v('#fF'), c: v('#fC')});
+  persist();
+  ['#fName','#fKcal','#fP','#fF','#fC'].forEach(i => $(i).value = '');
+  renderFood();
+};
+window.delFood = id => { U().foods = U().foods.filter(f => f.id !== id); persist(); renderFood(); };
+
+// ===== 體重 =====
+function avg7(date){
+  const pts = U().weights.filter(w => w.date <= date).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7);
+  return pts.length ? pts.reduce((s,p)=>s+p.kg,0)/pts.length : null;
+}
+function renderWeight(){
+  const sorted = [...U().weights].sort((a,b)=>b.date.localeCompare(a.date));
+  const latest = sorted[0];
+  const t = calc();
+  const a = latest ? avg7(latest.date) : null;
+  const prev = sorted[7] ? avg7(sorted[7].date) : null;
+  const change = (a != null && prev != null) ? a - prev : null;
+  $('#wStats').innerHTML = `
+    <div class="stat"><span>最新體重</span><b>${latest ? latest.kg.toFixed(2) : '--'} kg</b></div>
+    <div class="stat"><span>7 日平均</span><b>${a != null ? a.toFixed(2) : '--'} kg</b></div>
+    <div class="stat"><span>近一週變化（7日均）</span><b class="${change!=null&&change>0?'over':'left'}">${change!=null ? (change>0?'+':'')+change.toFixed(2) : '--'} kg</b></div>
+    <div class="stat"><span>距離目標</span><b>${(t.goal && a) ? Math.abs(a - t.goal).toFixed(1) : '--'} kg</b></div>`;
+  $('#wRows').innerHTML = sorted.slice(0,60).map(w => `<tr><td>${w.date}</td><td>${w.kg}</td><td>${avg7(w.date)?.toFixed(2) ?? '-'}</td>
+    <td><button class="btn del" onclick="delW('${w.date}')">✕</button></td></tr>`).join('');
+}
+$('#addW').onclick = () => {
+  const kg = parseFloat($('#wKg').value); if (!kg) return;
+  U().weights = U().weights.filter(w => w.date !== today()).concat({date: today(), kg});
+  persist(); $('#wKg').value = ''; renderWeight();
+};
+window.delW = d => { U().weights = U().weights.filter(w => w.date !== d); persist(); renderWeight(); };
+
+// ===== 目標與計算 =====
+function fillProfile(){
+  const P = U().p;
+  $('#pW').value = P.w || ''; $('#pH').value = P.h || ''; $('#pA').value = P.a || ''; $('#pBF').value = P.bf || '';
+  $('#pG').value = P.g ?? ''; $('#pMode').value = P.mode; $('#pAct').value = P.act;
+}
+['#pW','#pH','#pA','#pBF','#pG','#pMode','#pAct'].forEach(id => $(id).addEventListener('input', () => {
+  const P = U().p;
+  P.w = parseFloat($('#pW').value) || 0;
+  P.h = parseFloat($('#pH').value) || 0;
+  P.a = parseFloat($('#pA').value) || 0;
+  P.bf = parseFloat($('#pBF').value) || 0;
+  P.g = parseFloat($('#pG').value) || '';
+  P.mode = $('#pMode').value; P.act = $('#pAct').value;
+  persist(); renderPlan(); renderFood(); renderWeight();
+}));
+
+function calc(){
+  const P = U().p;
+  const w = P.w || 0, bf = P.bf || 0;
+  const lbm = bf > 0 ? w*(1-bf/100) : null;
+  // 有體脂用 Katch-McArdle，沒有則用 Mifflin-St Jeor
+  const bmr = lbm ? 370 + 21.6*lbm : 10*w + 6.25*P.h - 5*P.a + 5;
+  const tdee = bmr * parseFloat(P.act);
+  const delta = P.mode === 'cut' ? -500 : 300;
+  const target = Math.round(tdee + delta);
+  const p = Math.round(2.0*w), f = Math.round(0.9*w);
+  const c = Math.round((target - p*4 - f*9)/4);
+  const weekly = (delta*7)/7700; // kg/週（粗估）
+  return {lbm, bmr: Math.round(bmr), tdee: Math.round(tdee), target, delta, p, f, c, weekly,
+          goal: P.g || null, bmrType: lbm ? 'Katch-McArdle' : 'Mifflin-St Jeor'};
+}
+function renderPlan(){
+  const t = calc();
+  const P = U().p;
+  let weeksTxt = '未設定目標體重';
+  if (t.goal && P.w){
+    const diff = P.w - t.goal;
+    const need = Math.abs(diff)/Math.abs(t.weekly);
+    const dirOk = (P.mode==='cut') === (diff>0);
+    weeksTxt = dirOk ? `約 ${Math.ceil(need)} 週（約 ${(need/4.33).toFixed(1)} 個月）` : '目標方向與目前模式不符';
+  }
+  $('#calc').innerHTML = `
+    <div class="stat"><span>基礎代謝 BMR（${t.bmrType}）</span><b>${t.bmr} kcal</b></div>
+    <div class="stat"><span>每日消耗 TDEE</span><b>${t.tdee} kcal</b></div>
+    <div class="stat"><span>${P.mode==='cut'?'減脂目標熱量':'增肌目標熱量'}</span><b>${t.target} kcal</b></div>
+    <div class="stat"><span>每週變化（粗估）</span><b>${t.weekly>0?'+':''}${t.weekly.toFixed(2)} kg</b></div>
+    <div class="stat" style="grid-column:span 2"><span>預估達標時間</span><b>${weeksTxt}</b></div>`;
+  $('#calcNote').textContent = `熱量差 ${t.delta>0?'+':''}${t.delta} kcal/日。每週變化按 7700 kcal ≈ 1 kg 粗估，實際會受水分、訓練與睡眠影響。`;
+  $('#macroRows').innerHTML = `
+    <tr><td>蛋白質</td><td>${t.p} g</td><td>${t.p*4} kcal</td></tr>
+    <tr><td>脂肪</td><td>${t.f} g</td><td>${t.f*9} kcal</td></tr>
+    <tr><td>碳水</td><td>${t.c} g</td><td>${t.c*4} kcal</td></tr>
+    <tr><td><b>合計</b></td><td></td><td><b>${t.target} kcal</b></td></tr>`;
+}
+
+// ===== 全部重畫 =====
+function renderAll(){
+  renderUsers(); fillProfile(); renderLib(); fillEx(); renderTrain(); renderFood(); renderWeight(); renderPlan();
+}
+// ===== 匯出／匯入備份（用來在手機與電腦之間搬資料）=====
+$('#exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `fitness-backup-${today()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!data || !data.users || !Object.keys(data.users).length) throw new Error('格式不符');
+    if (!confirm('匯入會取代目前這台裝置上的所有資料，確定要匯入嗎？')) return;
+    S = data;
+    if (!S.users[S.cur]) S.cur = Object.keys(S.users)[0];
+    persist(); renderAll();
+    alert('匯入完成 ✓');
+  } catch (err) {
+    alert('匯入失敗：檔案不是有效的備份檔');
+  }
+  e.target.value = '';
+};
+
+// 身體數據卡片移到「飲食」分頁最上方，修改後即時更新剩餘熱量
+$('#food').prepend($('#plan > .card'));
+renderAll();
+// 註冊離線服務（需在 https 或 localhost 下才會生效）
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

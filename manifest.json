@@ -1,0 +1,14 @@
+{
+  "name": "訓練與營養紀錄",
+  "short_name": "訓練紀錄",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
