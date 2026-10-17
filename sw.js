@@ -1,5 +1,5 @@
 // 離線快取：第一次開啟後，沒有網路也能使用
-const CACHE = 'fitness-v1';
+const CACHE = 'fitness-v2';
 const FILES = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {

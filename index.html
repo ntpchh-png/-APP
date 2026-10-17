@@ -80,6 +80,7 @@
   .hint{color:#64748b!important}
   /* 彩色欄位名稱加深、加粗，避免太淡 */
   label[style*="color:hsl"]{filter:brightness(.72) saturate(1.4);font-weight:700!important;font-size:13px}
+  .chartbox{display:block;width:100%;height:220px}
 </style>
 </head>
 <body>
@@ -128,6 +129,7 @@
       <button class="btn ghost" id="copyLast">帶入上次</button>
     </div>
     <div class="hint" id="lastHint"></div>
+    <div class="hint" id="effHint"></div>
     <div class="hint">💡 RPE：這組做完的吃力程度。10＝拼到極限，9＝還能再做 1 下，8＝還能再做 2 下，7＝還能再做 3 下左右。不確定就填 8。</div>
   </div>
 
@@ -140,6 +142,13 @@
   <div class="card">
     <h2>📊 本週各肌群組數（目標約 10–20 組）</h2>
     <div id="weekMuscle"></div>
+  </div>
+
+  <div class="card">
+    <h2>📈 動作進步曲線（輔助機為有效重量）</h2>
+    <select id="chEx" style="margin-bottom:8px"></select>
+    <canvas id="eChart" class="chartbox"></canvas>
+    <div class="hint">每天取當天最重的一組。有效重量往上走，代表進步。</div>
   </div>
 
   <div class="card">
@@ -216,6 +225,12 @@
     <div class="hint">7 日平均可減少單日水分造成的波動。</div>
   </div>
   <div class="card">
+    <h2>📉 體重折線圖</h2>
+    <canvas id="wChart" class="chartbox"></canvas>
+    <div class="hint">橘線為每日體重，紫線為 7 日平均，虛線為目標體重。</div>
+  </div>
+
+  <div class="card">
     <h2>🗓️ 紀錄</h2>
     <table><thead><tr><th>日期</th><th>體重</th><th>7日均</th><th></th></tr></thead><tbody id="wRows"></tbody></table>
   </div>
@@ -272,7 +287,7 @@ const today = () => { const d = new Date(); return new Date(d.getTime() - d.getT
 const MUSCLES = ['背','手','胸','肩','三頭','腿','上腹'];
 const MUSCLE_LABEL = {'手':'手（二頭）'};
 const DEFAULT_LIB = [
-  {d:'A',n:'高位下拉機',m:'背'},{d:'A',n:'坐姿划船機',m:'背'},{d:'A',n:'T槓划船機',m:'背'},{d:'A',n:'直臂下拉機',m:'背'},
+  {d:'A',n:'輔助引體向上機',m:'背',assist:true},{d:'A',n:'高位下拉機',m:'背'},{d:'A',n:'坐姿划船機',m:'背'},{d:'A',n:'T槓划船機',m:'背'},{d:'A',n:'直臂下拉機',m:'背'},
   {d:'A',n:'二頭彎舉機',m:'手'},{d:'A',n:'牧師椅二頭彎舉機',m:'手'},{d:'A',n:'繩索二頭彎舉',m:'手'},
   {d:'B',n:'胸推機',m:'胸'},{d:'B',n:'蝴蝶機夾胸',m:'胸'},{d:'B',n:'上斜胸推機',m:'胸'},
   {d:'B',n:'肩推機',m:'肩'},{d:'B',n:'側平舉機',m:'肩'},{d:'B',n:'反向飛鳥機',m:'肩'},
@@ -288,6 +303,8 @@ if (!S){
   S = {cur:'u1', users:{u1:{name:'使用者 1', p:{...DEFAULT_PROFILE}, lib:structuredClone(DEFAULT_LIB), logs:[], notes:{}, foods:[], weights:[]}}};
 // 這些數字是預設範例，請改成自己的數據
 }
+// 舊資料升級：補上輔助引體向上機
+Object.values(S.users).forEach(u => { if (!u.lib.some(x => x.assist)) u.lib.unshift({d:'A', n:'輔助引體向上機', m:'背', assist:true}); });
 const U = () => S.users[S.cur];
 const persist = () => localStorage.setItem('fit_v2', JSON.stringify(S));
 
@@ -307,6 +324,7 @@ $('#newUser').onclick = () => {
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === b.dataset.tab));
+  setTimeout(renderCharts, 0);
 });
 
 // ===== 動作庫 / 訓練 =====
@@ -322,6 +340,7 @@ $('#tDay').onchange = fillEx;
 $('#tDate').value = today();
 $('#tDate').onchange = () => { lastHint(); renderTrain(); };
 $('#tEx').onchange = lastHint;
+$('#tKg').oninput = updEff;
 
 function lastSet(ex){
   const h = U().logs.filter(l => l.ex === ex && l.date < $('#tDate').value).sort((a,b)=> b.date.localeCompare(a.date));
@@ -329,7 +348,8 @@ function lastSet(ex){
 }
 function lastHint(){
   const l = lastSet($('#tEx').value);
-  $('#lastHint').textContent = l ? `上次：${l.date}　${l.kg} kg × ${l.reps}（RPE ${l.rpe ?? '-'}）` : '這個動作還沒有過去紀錄';
+  $('#lastHint').textContent = l ? `上次：${l.date}　有效 ${l.kg} kg × ${l.reps}（RPE ${l.rpe ?? '-'}${l.assist != null ? `，體重 ${l.bw} − 配重 ${l.assist}` : ''}）` : '這個動作還沒有過去紀錄';
+  updEff();
 }
 $('#copyLast').onclick = () => {
   const l = lastSet($('#tEx').value);
@@ -341,7 +361,9 @@ $('#addSet').onclick = () => {
   const kg = parseFloat($('#tKg').value), reps = parseInt($('#tReps').value), rpe = parseFloat($('#tRpe').value) || null;
   if (!item) return alert('請先到「動作庫」新增動作');
   if (!kg || !reps) return alert('請輸入重量與次數');
-  U().logs.push({id: Date.now(), date: $('#tDate').value, day: item.d, ex, m: item.m, kg, reps, rpe});
+  const bw = bodyWeightOn($('#tDate').value);
+  const eff = item.assist ? Math.max(0, +(bw - kg).toFixed(2)) : kg;
+  U().logs.push({id: Date.now(), date: $('#tDate').value, day: item.d, ex, m: item.m, kg: eff, assist: item.assist ? kg : null, bw: item.assist ? bw : null, reps, rpe});
   persist();
   $('#tReps').value = ''; $('#tRpe').value = '';
   renderTrain(); lastHint();
@@ -352,7 +374,7 @@ function renderTrain(){
   const d = $('#tDate').value;
   const todays = U().logs.filter(l => l.date === d);
   $('#setRows').innerHTML = todays.map(l => `<tr>
-    <td>${esc(l.ex)}</td><td>${l.kg}</td><td>${l.reps}</td><td>${l.rpe ?? '-'}</td>
+    <td>${esc(l.ex)}</td><td>${l.kg}${l.assist != null ? ` <span class="hint">(配${l.assist})</span>` : ''}</td><td>${l.reps}</td><td>${l.rpe ?? '-'}</td>
     <td><button class="btn del" onclick="delSet(${l.id})">✕</button></td></tr>`).join('') || '<tr><td colspan=5 class="hint">今天還沒有紀錄</td></tr>';
   const vol = todays.reduce((s,l)=> s + l.kg*l.reps, 0);
   $('#volHint').textContent = `今日總組數 ${todays.length}　總噸數 ${Math.round(vol).toLocaleString()} kg`;
@@ -499,7 +521,7 @@ function renderPlan(){
 
 // ===== 全部重畫 =====
 function renderAll(){
-  renderUsers(); fillProfile(); renderLib(); fillEx(); renderTrain(); renderFood(); renderWeight(); renderPlan();
+  renderUsers(); fillProfile(); renderLib(); fillEx(); renderTrain(); renderFood(); renderWeight(); renderPlan(); fillChEx(); renderCharts();
 }
 // ===== 匯出／匯入備份（用來在手機與電腦之間搬資料）=====
 $('#exportBtn').onclick = () => {
@@ -530,6 +552,77 @@ $('#importFile').onchange = async e => {
 
 // 身體數據卡片移到「飲食」分頁最上方，修改後即時更新剩餘熱量
 $('#food').prepend($('#plan > .card'));
+
+// ===== 輔助機與有效重量 =====
+function bodyWeightOn(d){
+  const w = U().weights.filter(x => x.date <= d).sort((a,b) => b.date.localeCompare(a.date))[0];
+  return w ? w.kg : (U().p.w || 0);
+}
+function updEff(){
+  const item = U().lib.find(x => x.n === $('#tEx').value);
+  if (!item || !item.assist){ $('#effHint').textContent = ''; return; }
+  const bw = bodyWeightOn($('#tDate').value), a = parseFloat($('#tKg').value) || 0;
+  $('#effHint').textContent = `🔧 輔助機請輸入「配重」。有效重量 = 體重 ${bw} − 配重 ${a} = ${Math.max(0, +(bw - a).toFixed(2))} kg`;
+}
+
+// ===== 折線圖（不需外部套件，可離線使用）=====
+function drawChart(id, pts, o = {}){
+  const c = document.getElementById(id); if (!c) return;
+  const dpr = window.devicePixelRatio || 1, W = c.clientWidth || 320, H = 220;
+  c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  g.font = '11px sans-serif';
+  if (!pts.length){ g.fillStyle = '#64748b'; g.font = '14px sans-serif'; g.fillText('還沒有資料，先記錄幾筆吧', 16, H / 2); return; }
+  const pad = {l: 44, r: 14, t: 14, b: 26}, iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const vals = pts.map(p => p.y).concat(o.goal != null ? [o.goal] : []);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < 1){ lo -= 1; hi += 1; }
+  const m = (hi - lo) * 0.1; lo -= m; hi += m;
+  const X = i => pad.l + (pts.length === 1 ? iw / 2 : i * iw / (pts.length - 1));
+  const Y = v => pad.t + (hi - v) * ih / (hi - lo);
+  g.strokeStyle = '#e2e8f0'; g.lineWidth = 1; g.fillStyle = '#64748b';
+  for (let k = 0; k <= 4; k++){
+    const v = lo + (hi - lo) * k / 4, y = Y(v);
+    g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke();
+    g.fillText(v.toFixed(1), 4, y + 4);
+  }
+  if (o.goal != null){
+    const y = Y(o.goal);
+    g.save(); g.setLineDash([6, 4]); g.strokeStyle = '#f97316'; g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke(); g.restore();
+    g.fillStyle = '#f97316'; g.fillText('目標 ' + o.goal, pad.l + 4, y - 4);
+  }
+  if (o.avg){
+    g.strokeStyle = '#8b5cf6'; g.lineWidth = 2; g.beginPath(); let go = false;
+    pts.forEach((p, i) => { if (p.a == null) return; if (go) g.lineTo(X(i), Y(p.a)); else g.moveTo(X(i), Y(p.a)); go = true; });
+    g.stroke();
+  }
+  const col = o.color || '#22c55e';
+  g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath();
+  pts.forEach((p, i) => { if (i) g.lineTo(X(i), Y(p.y)); else g.moveTo(X(i), Y(p.y)); });
+  g.stroke();
+  g.fillStyle = col;
+  pts.forEach((p, i) => { g.beginPath(); g.arc(X(i), Y(p.y), 3.5, 0, Math.PI * 2); g.fill(); });
+  g.fillStyle = '#64748b';
+  const first = pts[0].x.slice(5), last = pts[pts.length - 1].x.slice(5);
+  g.fillText(first, pad.l, H - 6);
+  g.fillText(last, W - pad.r - g.measureText(last).width, H - 6);
+}
+function renderCharts(){
+  const ws = [...U().weights].sort((a,b) => a.date.localeCompare(b.date));
+  drawChart('wChart', ws.map(w => ({x: w.date, y: w.kg, a: avg7(w.date)})), {goal: U().p.g || null, avg: true, color: '#f97316'});
+  const ex = $('#chEx').value, best = {};
+  U().logs.filter(l => l.ex === ex).forEach(l => { best[l.date] = Math.max(best[l.date] ?? 0, l.kg); });
+  drawChart('eChart', Object.keys(best).sort().map(d => ({x: d, y: best[d]})), {color: '#3b82f6'});
+}
+function fillChEx(){
+  const sel = $('#chEx'), prev = sel.value;
+  const names = [...new Set(U().lib.map(x => x.n))];
+  sel.innerHTML = names.map(n => `<option>${esc(n)}</option>`).join('');
+  if (names.includes(prev)) sel.value = prev;
+}
+$('#chEx').onchange = renderCharts;
+window.addEventListener('resize', renderCharts);
 renderAll();
 // 註冊離線服務（需在 https 或 localhost 下才會生效）
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
